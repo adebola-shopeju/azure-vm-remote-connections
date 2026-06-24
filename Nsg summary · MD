@@ -1,0 +1,104 @@
+# NSG Summary — Azure VM Remote Connection Lab
+
+**Lab:** Lab 5 — Virtual Machine Setup & Remote Connection  
+**Darey.io Cloud Engineering Track**  
+**Date:** 24 June 2026  
+**Resource Group:** lab5-rg  
+**Region:** Switzerland North (Zone 1)  
+
+---
+
+## Network Security Groups Overview
+
+Two NSGs were automatically provisioned during VM creation, each attached to their respective VM's network interface.
+
+| NSG Name | Attached To | Network Interface | VM |
+|---|---|---|---|
+| `windows-vm-lab5-nsg` | windows-vm-lab5 | windows-vm-lab5731_z1 | Windows Server 2025 |
+| `linux-vm-lab5-nsg` | linux-vm-lab5 | linux-vm-lab5444_z1 | Ubuntu 24.04 LTS |
+
+---
+
+## Windows VM NSG — `windows-vm-lab5-nsg`
+
+### Inbound Rules (Final State — After Security Hardening)
+
+| Priority | Name | Port | Protocol | Source | Destination | Action |
+|---|---|---|---|---|---|---|
+| 300 | RDP | 3389 | TCP | 102.88.55.250/32 | Any | ✅ Allow |
+| 65000 | AllowVnetInBound | Any | Any | VirtualNetwork | VirtualNetwork | ✅ Allow |
+| 65001 | AllowAzureLoadBalancerInBound | Any | Any | AzureLoadBalancer | Any | ✅ Allow |
+| 65500 | DenyAllInBound | Any | Any | Any | Any | ❌ Deny |
+
+### Outbound Rules
+
+| Priority | Name | Port | Protocol | Source | Destination | Action |
+|---|---|---|---|---|---|---|
+| 65000 | AllowVnetOutBound | Any | Any | VirtualNetwork | VirtualNetwork | ✅ Allow |
+| 65001 | AllowInternetOutBound | Any | Any | Any | Internet | ✅ Allow |
+| 65500 | DenyAllOutBound | Any | Any | Any | Any | ❌ Deny |
+
+### RDP Rule Change Log
+
+| Stage | Source | Notes |
+|---|---|---|
+| Initial (Phase 2) | Any (0.0.0.0/0) | Open to internet — required for initial connection testing |
+| Final (Phase 5) | 102.88.55.250/32 | Restricted to student's public IP only |
+
+---
+
+## Linux VM NSG — `linux-vm-lab5-nsg`
+
+### Inbound Rules (Final State — After Security Hardening)
+
+| Priority | Name | Port | Protocol | Source | Destination | Action |
+|---|---|---|---|---|---|---|
+| 300 | SSH | 22 | TCP | 102.88.55.250/32 | Any | ✅ Allow |
+| 65000 | AllowVnetInBound | Any | Any | VirtualNetwork | VirtualNetwork | ✅ Allow |
+| 65001 | AllowAzureLoadBalancerInBound | Any | Any | AzureLoadBalancer | Any | ✅ Allow |
+| 65500 | DenyAllInBound | Any | Any | Any | Any | ❌ Deny |
+
+### Outbound Rules
+
+| Priority | Name | Port | Protocol | Source | Destination | Action |
+|---|---|---|---|---|---|---|
+| 65000 | AllowVnetOutBound | Any | Any | VirtualNetwork | VirtualNetwork | ✅ Allow |
+| 65001 | AllowInternetOutBound | Any | Any | Any | Internet | ✅ Allow |
+| 65500 | DenyAllOutBound | Any | Any | Any | Any | ❌ Deny |
+
+### SSH Rule Change Log
+
+| Stage | Source | Notes |
+|---|---|---|
+| Initial (Phase 2) | Any (0.0.0.0/0) | Open to internet — required for initial connection testing |
+| Final (Phase 5) | 102.88.55.250/32 | Restricted to student's public IP only |
+
+---
+
+## Key Concepts Demonstrated
+
+**Priority System:** Lower numbers = higher priority. Rules are evaluated in ascending priority order (100 → 65500). The custom RDP/SSH rules at priority 300 are evaluated before the default deny-all at 65500.
+
+**Source Restriction (CIDR /32):** A /32 CIDR block represents a single IP address. Setting `102.88.55.250/32` as the source means only traffic originating from that exact IP is permitted — all other sources are implicitly denied by the `DenyAllInBound` rule at priority 65500.
+
+**Default Rules:** Azure automatically adds the three default rules (AllowVnetInBound, AllowAzureLoadBalancerInBound, DenyAllInBound) to every NSG. These cannot be deleted but can be overridden by custom rules with lower priority numbers.
+
+**Protocol:** Both RDP (3389) and SSH (22) require TCP. UDP is not used for either protocol.
+
+---
+
+## Source IP Identification
+
+The student's public IP was identified using:
+```bash
+curl ifconfig.me
+# Result: 102.88.55.250
+```
+
+This was applied as `102.88.55.250/32` in both NSG inbound rules.
+
+> **Note:** This IP is dynamically assigned by the ISP and may change. If connection is lost after a network change, update the NSG source IP to the new public IP address.
+
+---
+
+*NSG Summary — Lab 5 | Darey.io Cloud Engineering Track*
